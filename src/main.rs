@@ -1,3 +1,4 @@
+use clap::Parser;
 use log::{error, info, warn};
 use notify_rust::Notification;
 use std::{
@@ -5,7 +6,6 @@ use std::{
     io::{self, Read, Write},
 };
 use tokio::signal;
-use clap::Parser;
 
 use dirs::cache_dir;
 use reqwest::{self, Error};
@@ -27,9 +27,9 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     env_logger::init();
-    
+
     let args = Args::parse();
-    
+
     let repos: Vec<&str> = args.repos.trim().split(',').collect();
     let cache_file = args.cache_file;
     println!("🐺 Got {:?}", repos);
@@ -81,7 +81,17 @@ async fn run_daemon(repos: Vec<&str>, cache_file: &str) -> Result<(), Error> {
             match serde_json::from_str::<Value>(&body) {
                 Ok(json) => match json.as_array() {
                     Some(releases) => {
-                        let newest_release = releases.get(0).unwrap();
+                        let mut release_idx = 0;
+                        let mut newest_release = releases.get(release_idx).unwrap();
+                        loop {
+                            if let Some(prerelease) = newest_release["prerelease"].as_bool() {
+                                if !prerelease {
+                                    break;
+                                }
+                            }
+                            release_idx = release_idx + 1;
+                            newest_release = releases.get(release_idx).unwrap();
+                        }
                         if let Some(tag_name) = newest_release["tag_name"].as_str() {
                             info!("{}: {}", repo, tag_name);
                             if let Some(old_release) = release_info.get(&repo.to_string()) {
