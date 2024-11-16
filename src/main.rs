@@ -181,6 +181,7 @@ async fn release_notify(json: serde_json::Map<std::string::String, Value>) -> Re
         .summary("New release")
         .body(&content)
         .icon("librewolf")
+        .timeout(0)
         .show()
         .unwrap();
     Ok(())
